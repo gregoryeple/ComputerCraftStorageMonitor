@@ -1,15 +1,15 @@
 --[[
 
-PeripheralDetector program
+StorageMonitor program
 By Out-Feu
 
-version 1.0.0
+version 1.1.0
 
 Free to distribute/alter
 so long as proper credit to original
 author is maintained.
 
-This program will display on a monitor the storage of all connected RF storage cells or equivalent.
+This program will display on a monitor the storage of all connected storage blocks (item, liquid, RF...).
 Multiple monitors can be connected.
 
 --]]
@@ -66,20 +66,28 @@ function getCurrentStorage()
  for i, storage in pairs(storageRF) do
   currentStorage = currentStorage + storage.getEnergy()
  end
- for i, storage in pairs(storageMeka) do
+ for i, storage in pairs(storageRFMeka) do
   currentStorage = currentStorage + math.floor(storage.getEnergy() * 0.4)
  end
  for i, storage in pairs(storageEU) do
   currentStorage = currentStorage + storage.getEUStored()
  end
- for i, storage in pairs(storageQIO) do
-  if storage.hasFrequency() then
-   currentStorage = currentStorage + storage.getFrequencyItemCount()
+ for i, storage in pairs(storageFluid) do
+  for n, tank in pairs(storage.tanks()) do
+   currentStorage = currentStorage + tank.amount
   end
+ end
+ for i, storage in pairs(storageFluidMeka) do
+  currentStorage = currentStorage + storage.getCapacity() - storage.getNeeded()
  end
  for i, storage in pairs(storageItem) do
   for n, item in pairs(storage.list()) do
    currentStorage = currentStorage + item.count
+  end
+ end
+ for i, storage in pairs(storageQIO) do
+  if storage.hasFrequency() then
+   currentStorage = currentStorage + storage.getFrequencyItemCount()
   end
  end
  return currentStorage
@@ -90,16 +98,28 @@ function getMaxStorage()
  for i, storage in pairs(storageRF) do
   maxStorage = maxStorage + storage.getEnergyCapacity()
  end
- for i, storage in pairs(storageMeka) do
+ for i, storage in pairs(storageRFMeka) do
   maxStorage = maxStorage + math.floor(storage.getMaxEnergy() * 0.4)
  end
  for i, storage in pairs(storageEU) do
   maxStorage = maxStorage + storage.getEUCapacity()
  end
+ for i, storage in pairs(storageFluid) do
+  for n, tank in pairs(storage.tanks()) do
+   if tank.capacity ~= nil then
+    maxStorage = maxStorage + tank.capacity
+   else
+    maxStorage = maxStorage + tank.amount
+   end
+  end
+ end
+ for i, storage in pairs(storageFluidMeka) do
+  maxStorage = maxStorage + storage.getCapacity()
+ end
  for i, storage in pairs(storageItem) do
   for n = 1, storage.size() do
    local item = storage.getItemDetail(n)
-   if item ~= nil then
+   if item ~= nil and item.count <= item.maxCount then
     maxStorage = maxStorage + item.maxCount
    else
     maxStorage = maxStorage + storage.getItemLimit(n)
@@ -118,7 +138,7 @@ function findStorageType()
  if forceStorageType ~= nil and forceStorageType ~= "" then
   return forceStorageType
  end
- types = { (#storageRF + #storageMeka), #storageEU, (#storageItem + #storageQIO) }
+ types = { (#storageRF + #storageRFMeka), #storageEU, (#storageFluid + #storageFluidMeka), (#storageItem + #storageQIO) }
  nType = 0
  for i, type in pairs(types) do
   if type > 0 then
@@ -126,10 +146,12 @@ function findStorageType()
   end
  end
  if nType == 1 then
-  if #storageRF > 0 or #storageMeka > 0 then
+  if #storageRF > 0 or #storageRFMeka > 0 then
    return "RF"
   elseif #storageEU > 0 then
    return "EU"
+  elseif #storageFluid > 0  or #storageFluidMeka > 0 then
+   return "mB"
   elseif #storageItem > 0  or #storageQIO > 0 then
    return "Item"
   end
@@ -141,8 +163,10 @@ function findConnectedPeripherals(resetAll)
  if resetAll then
   monitors = {}
   storageRF = {}
-  storageMeka = {}
+  storageRFMeka = {}
   storageEU = {}
+  storageFluid = {}
+  storageFluidMeka = {}
   storageItem = {}
   storageQIO = {}
  end
@@ -153,37 +177,46 @@ function findConnectedPeripherals(resetAll)
   elseif table.findAll(peripheral.getMethods(per), {"getEnergy", "getEnergyCapacity"}) and table.find({nil, "", "RF", "FE"}, forceStorageType) ~= nil then
    table.insert(storageRF, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"getEnergy", "getMaxEnergy"}) and table.find({nil, "", "RF", "FE"}, forceStorageType) ~= nil then
-   table.insert(storageMeka, peripheral.wrap(per))
+   table.insert(storageRFMeka, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"getEUStored", "getEUCapacity"}) and table.find({nil, "", "EU"}, forceStorageType) ~= nil then
    table.insert(storageEU, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"hasFrequency", "getFrequencyItemCount", "getFrequencyItemCapacity"}) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
    table.insert(storageQIO, peripheral.wrap(per))
+  elseif table.findAll(peripheral.getMethods(per), {"tanks"}) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas"}, forceStorageType) ~= nil then
+   table.insert(storageFluid, peripheral.wrap(per))
+  elseif table.findAll(peripheral.getMethods(per), {"getStored", "getCapacity", "getNeeded"}) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas"}, forceStorageType) ~= nil then
+   table.insert(storageFluidMeka, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"size", "list", "getItemLimit", "getItemDetail"}) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
    table.insert(storageItem, peripheral.wrap(per))
   elseif peripheral.getType(per) ~= "modem" then
    printError("Found unsupported peripheral: " .. peripheral.getType(per))
   end
  end
- print("Found " .. #monitors .. " monitors and " .. (#storageRF + #storageMeka + #storageEU + #storageItem + #storageQIO) .. " storage peripherals")
+ print("Found " .. #monitors .. " monitors and " .. (#storageRF + #storageRFMeka + #storageEU + #storageFluid + #storageFluidMeka + #storageItem + #storageQIO) .. " storage peripherals")
 end 
 
 function initStorageColor()
  if storageFillColor ~= nil then
   return
  elseif storageType == "RF" or storageType == "FE" then
-  if #storageMeka > 0 and #storageRF == 0 then
+  if #storageRFMeka > 0 and #storageRF == 0 then
    storageFillColor = colors.green
    storageFillColorAlt = colors.lime
   else
    storageFillColor = colors.red
    storageFillColorAlt = colors.pink
   end
- elseif storageType == "EU" or storageType == "Mana" or storageType == "mB" then
+ elseif storageType == "EU" or storageType == "mB" or storageType == "Liquid" or storageType == "Fluid" or storageType == "Gas" or storageType == "Mana" then
   storageFillColor = colors.blue
   storageFillColorAlt = colors.lightBlue
  elseif storageType == "Item" then
-  storageFillColor = colors.brown
-  storageFillColorAlt = colors.orange
+  if #storageQIO > 0 and #storageItem == 0 then
+   storageFillColor = colors.green
+   storageFillColorAlt = colors.lime
+  else
+   storageFillColor = colors.brown
+   storageFillColorAlt = colors.orange
+  end
  else
   storageFillColor = colors.white
   storageFillColorAlt = colors.lightGray
@@ -194,8 +227,8 @@ end
 
 textColor = colors.white --color of the text
 backgroundColor = colors.black --background color of the program
-transfertPlusColor = colors.green --color of the text for positive transfert
-transfertMinusColor = colors.red --color of the text for negative transfert
+transfertPlusColor = colors.green --color of the text for positive transfer
+transfertMinusColor = colors.red --color of the text for negative transfer
 storageBackgroundColor = colors.gray --color for empty storage space
 storageFillColor = nil --color for full storage, set to nil to automatically set the color depending on storage type
 storageFillColorAlt = nil --transition color for half full storage, set to nil to automatically set the color depending on storage type
@@ -207,15 +240,17 @@ paddingAll = 1 --padding on all the sides of the monitor
 paddingSide = 0 --extra padding on the left and on the right of the storage space display
 decimalPrecision = 2 --maximum number of decimal to display on storage capacity
 useAbreviation = false --use abreviations on storage capacity
-forceStorageType = "" --if set, all other conneczzted storage type will be ignored
+forceStorageType = "" --if set, all other connected storage type will be ignored
 updateFrequency = 1 --how often should the display be updated (in seconds)
 
 abreviationList = { "K", "M", "B", "T" } --each subsequent symbol must be equal to it's predecessor x1000
 storageRF = {}
-storageMeka = {}
+storageRFMeka = {}
 storageEU = {}
 storageItem = {}
 storageQIO = {}
+storageFluid = {}
+storageFluidMeka = {}
 monitors = {}
 storageType = ""
 
