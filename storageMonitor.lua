@@ -3,7 +3,7 @@
 StorageMonitor program
 By Out-Feu
 
-version 1.1.0
+version 1.2.0
 
 Free to distribute/alter
 so long as proper credit to original
@@ -72,13 +72,28 @@ function getCurrentStorage()
  for i, storage in pairs(storageEU) do
   currentStorage = currentStorage + storage.getEUStored()
  end
+ for i, storage in pairs(storageMana) do
+  currentStorage = currentStorage + storage.getMana()
+ end
  for i, storage in pairs(storageFluid) do
   for n, tank in pairs(storage.tanks()) do
    currentStorage = currentStorage + tank.amount
   end
  end
  for i, storage in pairs(storageFluidMeka) do
-  currentStorage = currentStorage + storage.getCapacity() - storage.getNeeded()
+  local capacity = 0
+  if storage.getCapacity ~= nil then
+   capacity = storage.getCapacity()
+  elseif storage.getTankCapacity ~= nil then
+   capacity = storage.getTankCapacity()
+  elseif storage.getChemicalTankCapacity ~= nil then
+   capacity = storage.getChemicalTankCapacity()
+  end
+  if storage.getNeeded ~= nil then
+   currentStorage = currentStorage + capacity - storage.getNeeded()
+  else
+   currentStorage = currentStorage + capacity * storage.getFilledPercentage()
+  end
  end
  for i, storage in pairs(storageItem) do
   for n, item in pairs(storage.list()) do
@@ -104,6 +119,9 @@ function getMaxStorage()
  for i, storage in pairs(storageEU) do
   maxStorage = maxStorage + storage.getEUCapacity()
  end
+ for i, storage in pairs(storageMana) do
+  maxStorage = maxStorage + storage.getMaxMana()
+ end
  for i, storage in pairs(storageFluid) do
   for n, tank in pairs(storage.tanks()) do
    if tank.capacity ~= nil then
@@ -114,7 +132,13 @@ function getMaxStorage()
   end
  end
  for i, storage in pairs(storageFluidMeka) do
-  maxStorage = maxStorage + storage.getCapacity()
+  if storage.getCapacity ~= nil then
+   maxStorage = maxStorage + storage.getCapacity()
+  elseif storage.getTankCapacity ~= nil then
+   maxStorage = maxStorage + storage.getTankCapacity()
+  elseif storage.getChemicalTankCapacity ~= nil then
+   maxStorage = maxStorage + storage.getChemicalTankCapacity()
+  end
  end
  for i, storage in pairs(storageItem) do
   for n = 1, storage.size() do
@@ -138,7 +162,7 @@ function findStorageType()
  if forceStorageType ~= nil and forceStorageType ~= "" then
   return forceStorageType
  end
- types = { (#storageRF + #storageRFMeka), #storageEU, (#storageFluid + #storageFluidMeka), (#storageItem + #storageQIO) }
+ types = { (#storageRF + #storageRFMeka), #storageEU, #storageMana, (#storageFluid + #storageFluidMeka), (#storageItem + #storageQIO) }
  nType = 0
  for i, type in pairs(types) do
   if type > 0 then
@@ -150,6 +174,8 @@ function findStorageType()
    return "RF"
   elseif #storageEU > 0 then
    return "EU"
+  elseif #storageMana > 0 then
+   return "Mana"
   elseif #storageFluid > 0  or #storageFluidMeka > 0 then
    return "mB"
   elseif #storageItem > 0  or #storageQIO > 0 then
@@ -165,6 +191,7 @@ function findConnectedPeripherals(resetAll)
   storageRF = {}
   storageRFMeka = {}
   storageEU = {}
+  storageMana = {}
   storageFluid = {}
   storageFluidMeka = {}
   storageItem = {}
@@ -180,11 +207,13 @@ function findConnectedPeripherals(resetAll)
    table.insert(storageRFMeka, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"getEUStored", "getEUCapacity"}) and table.find({nil, "", "EU"}, forceStorageType) ~= nil then
    table.insert(storageEU, peripheral.wrap(per))
+  elseif table.findAll(peripheral.getMethods(per), {"getMana", "getMaxMana"}) and table.find({nil, "", "Mana"}, forceStorageType) ~= nil then
+   table.insert(storageMana, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"hasFrequency", "getFrequencyItemCount", "getFrequencyItemCapacity"}) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
    table.insert(storageQIO, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"tanks"}) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas"}, forceStorageType) ~= nil then
    table.insert(storageFluid, peripheral.wrap(per))
-  elseif table.findAll(peripheral.getMethods(per), {"getStored", "getCapacity", "getNeeded"}) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas"}, forceStorageType) ~= nil then
+  elseif table.find(peripheral.getMethods(per), "getStored") and (table.find(peripheral.getMethods(per), "getCapacity") or table.find(peripheral.getMethods(per), "getTankCapacity") or table.find(peripheral.getMethods(per), "getChemicalTankCapacity")) and (table.find(peripheral.getMethods(per), "getNeeded") or table.find(peripheral.getMethods(per), "getFilledPercentage")) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas"}, forceStorageType) ~= nil then
    table.insert(storageFluidMeka, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"size", "list", "getItemLimit", "getItemDetail"}) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
    table.insert(storageItem, peripheral.wrap(per))
@@ -192,7 +221,7 @@ function findConnectedPeripherals(resetAll)
    printError("Found unsupported peripheral: " .. peripheral.getType(per))
   end
  end
- print("Found " .. #monitors .. " monitors and " .. (#storageRF + #storageRFMeka + #storageEU + #storageFluid + #storageFluidMeka + #storageItem + #storageQIO) .. " storage peripherals")
+ print("Found " .. #monitors .. " monitors and " .. (#storageRF + #storageRFMeka + #storageEU + #storageMana + #storageFluid + #storageFluidMeka + #storageItem + #storageQIO) .. " storage peripherals")
 end 
 
 function initStorageColor()
@@ -239,13 +268,14 @@ displayStoragePercent = true --display the fill percentage of the storage
 paddingAll = 1 --padding on all the sides of the monitor
 paddingSide = 0 --extra padding on the left and on the right of the storage space display
 decimalPrecision = 2 --maximum number of decimal to display on storage capacity
-useAbreviation = false --use abreviations on storage capacity
+useAbreviation = true --use abreviations on storage capacity
 forceStorageType = "" --if set, all other connected storage type will be ignored
 updateFrequency = 1 --how often should the display be updated (in seconds)
 
 abreviationList = { "K", "M", "B", "T" } --each subsequent symbol must be equal to it's predecessor x1000
 storageRF = {}
 storageRFMeka = {}
+storageMana = {}
 storageEU = {}
 storageItem = {}
 storageQIO = {}
