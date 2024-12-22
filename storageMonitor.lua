@@ -3,7 +3,7 @@
 StorageMonitor program
 By Out-Feu
 
-version 1.2.0
+version 1.3.0
 
 Free to distribute/alter
 so long as proper credit to original
@@ -72,6 +72,9 @@ function getCurrentStorage()
  for i, storage in pairs(storageEU) do
   currentStorage = currentStorage + storage.getEUStored()
  end
+ for i, storage in pairs(storagePressure) do
+  currentStorage = currentStorage + storage.getPressure()
+ end
  for i, storage in pairs(storageMana) do
   currentStorage = currentStorage + storage.getMana()
  end
@@ -91,7 +94,7 @@ function getCurrentStorage()
   end
   if storage.getNeeded ~= nil then
    currentStorage = currentStorage + capacity - storage.getNeeded()
-  else
+  elseif storage.getFilledPercentage ~= nil then
    currentStorage = currentStorage + capacity * storage.getFilledPercentage()
   end
  end
@@ -118,6 +121,9 @@ function getMaxStorage()
  end
  for i, storage in pairs(storageEU) do
   maxStorage = maxStorage + storage.getEUCapacity()
+ end
+ for i, storage in pairs(storagePressure) do
+  maxStorage = maxStorage + storage.getDangerPressure()
  end
  for i, storage in pairs(storageMana) do
   maxStorage = maxStorage + storage.getMaxMana()
@@ -162,7 +168,7 @@ function findStorageType()
  if forceStorageType ~= nil and forceStorageType ~= "" then
   return forceStorageType
  end
- types = { (#storageRF + #storageRFMeka), #storageEU, #storageMana, (#storageFluid + #storageFluidMeka), (#storageItem + #storageQIO) }
+ types = { (#storageRF + #storageRFMeka), #storageEU, #storagePressure, #storageMana, (#storageFluid + #storageFluidMeka), (#storageItem + #storageQIO) }
  nType = 0
  for i, type in pairs(types) do
   if type > 0 then
@@ -174,6 +180,8 @@ function findStorageType()
    return "RF"
   elseif #storageEU > 0 then
    return "EU"
+  elseif #storagePressure > 0 then
+   return "Bar"
   elseif #storageMana > 0 then
    return "Mana"
   elseif #storageFluid > 0  or #storageFluidMeka > 0 then
@@ -191,6 +199,7 @@ function findConnectedPeripherals(resetAll)
   storageRF = {}
   storageRFMeka = {}
   storageEU = {}
+  storagePressure = {}
   storageMana = {}
   storageFluid = {}
   storageFluidMeka = {}
@@ -207,6 +216,8 @@ function findConnectedPeripherals(resetAll)
    table.insert(storageRFMeka, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"getEUStored", "getEUCapacity"}) and table.find({nil, "", "EU"}, forceStorageType) ~= nil then
    table.insert(storageEU, peripheral.wrap(per))
+  elseif table.findAll(peripheral.getMethods(per), {"getPressure", "getDangerPressure"}) and table.find({nil, "", "Bar", "Air", "Pressure"}, forceStorageType) ~= nil then
+   table.insert(storagePressure, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"getMana", "getMaxMana"}) and table.find({nil, "", "Mana"}, forceStorageType) ~= nil then
    table.insert(storageMana, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"hasFrequency", "getFrequencyItemCount", "getFrequencyItemCapacity"}) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
@@ -221,7 +232,7 @@ function findConnectedPeripherals(resetAll)
    printError("Found unsupported peripheral: " .. peripheral.getType(per))
   end
  end
- print("Found " .. #monitors .. " monitors and " .. (#storageRF + #storageRFMeka + #storageEU + #storageMana + #storageFluid + #storageFluidMeka + #storageItem + #storageQIO) .. " storage peripherals")
+ print("Found " .. #monitors .. " monitors and " .. (#storageRF + #storageRFMeka + #storageEU + #storagePressure + #storageMana + #storageFluid + #storageFluidMeka + #storageItem + #storageQIO) .. " storage peripherals")
 end 
 
 function initStorageColor()
@@ -238,6 +249,9 @@ function initStorageColor()
  elseif storageType == "EU" or storageType == "mB" or storageType == "Liquid" or storageType == "Fluid" or storageType == "Gas" or storageType == "Mana" then
   storageFillColor = colors.blue
   storageFillColorAlt = colors.lightBlue
+ elseif storageType == "Bar" or storageType == "Air" or storageType == "Pressure" then
+   storageFillColor = colors.green
+   storageFillColorAlt = colors.lime
  elseif storageType == "Item" then
   if #storageQIO > 0 and #storageItem == 0 then
    storageFillColor = colors.green
@@ -277,6 +291,7 @@ storageRF = {}
 storageRFMeka = {}
 storageMana = {}
 storageEU = {}
+storagePressure = {}
 storageItem = {}
 storageQIO = {}
 storageFluid = {}
