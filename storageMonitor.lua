@@ -3,7 +3,7 @@
 StorageMonitor program
 By Out-Feu
 
-version 1.3.0
+version 1.4.0
 
 Free to distribute/alter
 so long as proper credit to original
@@ -62,50 +62,82 @@ function formatNumber(num)
 end
 
 function getCurrentStorage()
- local currentStorage = 0 
+ local currentStorage = 0
+ local storageCapacity = 0
  for i, storage in pairs(storageRF) do
-  currentStorage = currentStorage + storage.getEnergy()
+  storageCapacity = storage.getEnergy()
+  if storageCapacity ~= nil then
+   currentStorage = currentStorage + storageCapacity
+  end
  end
  for i, storage in pairs(storageRFMeka) do
-  currentStorage = currentStorage + math.floor(storage.getEnergy() * 0.4)
+  storageCapacity = storage.getEnergy()
+  if storageCapacity ~= nil then
+   currentStorage = currentStorage + math.floor(storageCapacity * 0.4)
+  end
  end
  for i, storage in pairs(storageEU) do
-  currentStorage = currentStorage + storage.getEUStored()
+  storageCapacity = storage.getEUStored()
+  if storageCapacity ~= nil then
+   currentStorage = currentStorage + storageCapacity
+  end
  end
  for i, storage in pairs(storagePressure) do
-  currentStorage = currentStorage + storage.getPressure()
+  storageCapacity = storage.getPressure()
+  if storageCapacity ~= nil then
+   currentStorage = currentStorage + storageCapacity
+  end
  end
  for i, storage in pairs(storageMana) do
-  currentStorage = currentStorage + storage.getMana()
+  storageCapacity = storage.getMana()
+  if storageCapacity ~= nil then
+   currentStorage = currentStorage + storageCapacity
+  end
  end
  for i, storage in pairs(storageFluid) do
-  for n, tank in pairs(storage.tanks()) do
-   currentStorage = currentStorage + tank.amount
+  local tanks = storage.tanks()
+  if tanks ~= nil then
+   for n, tank in pairs(tanks) do
+    currentStorage = currentStorage + tank.amount
+   end
   end
  end
  for i, storage in pairs(storageFluidMeka) do
-  local capacity = 0
   if storage.getCapacity ~= nil then
-   capacity = storage.getCapacity()
+   storageCapacity = storage.getCapacity()
   elseif storage.getTankCapacity ~= nil then
-   capacity = storage.getTankCapacity()
+   storageCapacity = storage.getTankCapacity()
   elseif storage.getChemicalTankCapacity ~= nil then
-   capacity = storage.getChemicalTankCapacity()
+   storageCapacity = storage.getChemicalTankCapacity()
   end
-  if storage.getNeeded ~= nil then
-   currentStorage = currentStorage + capacity - storage.getNeeded()
-  elseif storage.getFilledPercentage ~= nil then
-   currentStorage = currentStorage + capacity * storage.getFilledPercentage()
+  if storageCapacity ~= nil then
+   if storage.getNeeded ~= nil then
+    local storageNeeded = storage.getNeeded()
+    if storageNeeded ~= nil then
+     currentStorage = currentStorage + storageCapacity - storageNeeded
+    end
+   elseif storage.getFilledPercentage ~= nil then
+    local storagePercent = storage.getFilledPercentage()
+    if storagePercent ~= nil then
+     currentStorage = currentStorage + storageCapacity * storagePercent
+    end
+   end
   end
  end
  for i, storage in pairs(storageItem) do
-  for n, item in pairs(storage.list()) do
-   currentStorage = currentStorage + item.count
+  local items = storage.list()
+  if items ~= nil then
+   for n, item in pairs(items) do
+    currentStorage = currentStorage + item.count
+   end
   end
  end
  for i, storage in pairs(storageQIO) do
   if storage.hasFrequency() then
-   currentStorage = currentStorage + storage.getFrequencyItemCount()
+   storageCapacity = storage.getFrequencyItemCount()
+   if storageCapacity ~= nil then
+    currentStorage = currentStorage + storageCapacity
+   end
   end
  end
  return currentStorage
@@ -113,63 +145,103 @@ end
 
 function getMaxStorage()
  local maxStorage = 0
+ local storageCapacity = 0
  for i, storage in pairs(storageRF) do
-  maxStorage = maxStorage + storage.getEnergyCapacity()
+  storageCapacity = storage.getEnergyCapacity()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
+  end
  end
  for i, storage in pairs(storageRFMeka) do
-  maxStorage = maxStorage + math.floor(storage.getMaxEnergy() * 0.4)
+  storageCapacity = storage.getMaxEnergy()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + math.floor(storageCapacity * 0.4)
+  end
  end
  for i, storage in pairs(storageEU) do
-  maxStorage = maxStorage + storage.getEUCapacity()
+  storageCapacity = storage.getEUCapacity()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
+  end
  end
  for i, storage in pairs(storagePressure) do
-  maxStorage = maxStorage + storage.getDangerPressure()
+  storageCapacity = storage.getDangerPressure()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
+  end
  end
  for i, storage in pairs(storageMana) do
-  maxStorage = maxStorage + storage.getMaxMana()
+  storageCapacity = storage.getMaxMana()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
+  end
  end
  for i, storage in pairs(storageFluid) do
-  for n, tank in pairs(storage.tanks()) do
-   if tank.capacity ~= nil then
-    maxStorage = maxStorage + tank.capacity
-   else
-    maxStorage = maxStorage + tank.amount
+  local tanks = storage.tanks()
+  if tanks ~= nil then
+   for n, tank in pairs(tanks) do
+    if tank.capacity ~= nil then
+     maxStorage = maxStorage + tank.capacity
+    else
+     maxStorage = maxStorage + tank.amount
+    end
    end
   end
  end
  for i, storage in pairs(storageFluidMeka) do
   if storage.getCapacity ~= nil then
-   maxStorage = maxStorage + storage.getCapacity()
+   storageCapacity = storage.getCapacity()
   elseif storage.getTankCapacity ~= nil then
-   maxStorage = maxStorage + storage.getTankCapacity()
+   storageCapacity = storage.getTankCapacity()
   elseif storage.getChemicalTankCapacity ~= nil then
-   maxStorage = maxStorage + storage.getChemicalTankCapacity()
+   storageCapacity = storage.getChemicalTankCapacity()
+  end
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
   end
  end
  for i, storage in pairs(storageItem) do
-  for n = 1, storage.size() do
-   local item = storage.getItemDetail(n)
-   if item ~= nil and item.count <= item.maxCount then
-    maxStorage = maxStorage + item.maxCount
-   else
-    maxStorage = maxStorage + storage.getItemLimit(n)
+  local storageSize = storage.size()
+  if storageSize ~= nil then
+   for n = 1, storageSize do
+    local item = storage.getItemDetail(n)
+    if item ~= nil and item.count <= item.maxCount then
+     maxStorage = maxStorage + item.maxCount
+    elseif storage.getItemLimit(n) ~= nil then
+     maxStorage = maxStorage + storage.getItemLimit(n)
+    end
    end
   end
  end
  for i, storage in pairs(storageQIO) do
   if storage.hasFrequency() then
-   maxStorage = maxStorage + storage.getFrequencyItemCapacity()
+   storageCapacity = storage.getFrequencyItemCapacity()
+   if storageCapacity ~= nil then
+    maxStorage = maxStorage + storageCapacity
+   end
   end
  end
  return maxStorage
+end
+
+function updateStorageCapacity(forceUpdateCapacity)
+ if forceUpdateCapacity or updateCapacity then
+  currentMaxStorage = getMaxStorage()
+ end
+ currentStorage = getCurrentStorage()
+ if currentMaxStorage == 0 then
+  currentPercent = 0
+ else
+  currentPercent = currentStorage / currentMaxStorage
+ end
 end
 
 function findStorageType()
  if forceStorageType ~= nil and forceStorageType ~= "" then
   return forceStorageType
  end
- types = { (#storageRF + #storageRFMeka), #storageEU, #storagePressure, #storageMana, (#storageFluid + #storageFluidMeka), (#storageItem + #storageQIO) }
- nType = 0
+ local types = { (#storageRF + #storageRFMeka), #storageEU, #storagePressure, #storageMana, (#storageFluid + #storageFluidMeka), (#storageItem + #storageQIO) }
+ local nType = 0
  for i, type in pairs(types) do
   if type > 0 then
    nType = nType + 1
@@ -184,9 +256,9 @@ function findStorageType()
    return "Bar"
   elseif #storageMana > 0 then
    return "Mana"
-  elseif #storageFluid > 0  or #storageFluidMeka > 0 then
+  elseif #storageFluid > 0 or #storageFluidMeka > 0 then
    return "mB"
-  elseif #storageItem > 0  or #storageQIO > 0 then
+  elseif #storageItem > 0 or #storageQIO > 0 then
    return "Item"
   end
  end
@@ -195,6 +267,7 @@ end
 
 function findConnectedPeripherals(resetAll)
  if resetAll then
+  nStorage = 0
   monitors = {}
   storageRF = {}
   storageRFMeka = {}
@@ -232,7 +305,8 @@ function findConnectedPeripherals(resetAll)
    printError("Found unsupported peripheral: " .. peripheral.getType(per))
   end
  end
- print("Found " .. #monitors .. " monitors and " .. (#storageRF + #storageRFMeka + #storageEU + #storagePressure + #storageMana + #storageFluid + #storageFluidMeka + #storageItem + #storageQIO) .. " storage peripherals")
+ nStorage = #storageRF + #storageRFMeka + #storageEU + #storagePressure + #storageMana + #storageFluid + #storageFluidMeka + #storageItem + #storageQIO
+ print("Found " .. #monitors .. " monitors and " .. nStorage .. " storage peripherals")
 end 
 
 function initStorageColor()
@@ -285,6 +359,8 @@ decimalPrecision = 2 --maximum number of decimal to display on storage capacity
 useAbreviation = true --use abreviations on storage capacity
 forceStorageType = "" --if set, all other connected storage type will be ignored
 updateFrequency = 1 --how often should the display be updated (in seconds)
+updateLatency = 2 --number of ticks to add per connected storage when calculating the transfer rate
+updateCapacity = false --should the total capacity be updated a the same time as the current storage
 
 abreviationList = { "K", "M", "B", "T" } --each subsequent symbol must be equal to it's predecessor x1000
 storageRF = {}
@@ -305,15 +381,9 @@ findConnectedPeripherals(false)
 storageType = findStorageType()
 initStorageColor()
 
-currentMaxStorage = getMaxStorage()
-currentStorage = getCurrentStorage()
 currentTransfert = 0
-if currentMaxStorage == 0 then
- currentPercent = 0
-else
- currentPercent = currentStorage / currentMaxStorage
-end
-os.startTimer(updateFrequency)
+updateStorageCapacity(true)
+currentTimer = os.startTimer(updateFrequency)
 repeat --main loop
 
  --display storage on the monitors
@@ -380,25 +450,23 @@ repeat --main loop
  end
 
  --wait for event
- local eve,id,cx,cy
+ local event
  repeat
   event = os.pullEvent()
  until event == "timer" or event == "peripheral" or event == "peripheral_detach" or event == "monitor_resize"
- 
+
  if event == "timer" then
   local oldStorage = currentStorage
-  currentStorage = getCurrentStorage()
-  currentTransfert = (currentStorage - oldStorage) / (updateFrequency * 20)
-  if currentMaxStorage == 0 then
-   currentPercent = 0
-  else
-   currentPercent = currentStorage / currentMaxStorage
-  end
-  os.startTimer(updateFrequency)
+  updateStorageCapacity(false)
+  currentTransfert = (currentStorage - oldStorage) / ((updateFrequency * 20) + updateLatency * nStorage)
  elseif event == "peripheral" or event == "peripheral_detach" then
    findConnectedPeripherals(true)
    storageType = findStorageType()
-   currentMaxStorage = getMaxStorage()
+   updateStorageCapacity(true)
+ else
+  updateStorageCapacity(false)
  end
+ os.cancelTimer(currentTimer)
+ currentTimer = os.startTimer(updateFrequency)
 
 until false
