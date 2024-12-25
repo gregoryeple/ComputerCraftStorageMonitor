@@ -4,7 +4,7 @@ A monitor program that displays the current storage for multiple types of storag
 
 Can be connected to multiple monitors or multiple storage containers.
 
-Pastebin: [wRXYASUQ](https://pastebin.com/wRXYASUQ)
+Pastebin: [mdKK9nYg](https://pastebin.com/mdKK9nYg)
 
 # Supported storage types
 
@@ -24,7 +24,7 @@ Pastebin: [wRXYASUQ](https://pastebin.com/wRXYASUQ)
  
  - This program was only tested with Minecraft 1.20.1.
  - When monitoring fluids with generic containers, I recommend activating the `updateCapacity` variable because the total capacity of a generic fluid storage isn't yet accessible.
- - When monitoring items with generic containers, I also recommend activating the `updateCapacity` variable because storing items with a different stack size _(different than 64)_ will change the total capacity of the storage container.
+ - When monitoring items with generic containers, I also recommend activating the `updateCapacity` variable because storing items with a different stack size _(other than 64)_ will change the total capacity of the storage container.
  - If the computer is connected to a container with multiple types of storage _(like item and fluid)_, it will only show the storage for 1 type, you can force which of theses type to display by using the `forceStorageType` variable.
  
- This program was inspired by [Toyguna/EnergyMonitor](https://github.com/Toyguna/EnergyMonitor)
+ This program was inspired by [Toyguna/EnergyMonitor](https://github.com/Toyguna/EnergyMonitor).
