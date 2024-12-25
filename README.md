@@ -16,9 +16,9 @@ Pastebin: [wRXYASUQ](https://pastebin.com/wRXYASUQ)
 
 # Example
 
-![Energy monitor](https://github.com/gregoryeple/ComputerCraftStorageMonitor/blob/master/examples/energy.png?raw=true)
+![Energy monitor](https://github.com/gregoryeple/ComputerCraftStorageMonitor/blob/main/examples/energy.png?raw=true)
 
-[See more examples](https://github.com/gregoryeple/ComputerCraftStorageMonitor/tree/master/examples)
+[See more examples](https://github.com/gregoryeple/ComputerCraftStorageMonitor/tree/main/examples)
 
 # Notes
  
