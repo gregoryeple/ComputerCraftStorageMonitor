@@ -3,7 +3,7 @@
 StorageMonitor program
 By Out-Feu
 
-version 1.4.0
+version 1.5.0
 
 Free to distribute/alter
 so long as proper credit to original
@@ -144,6 +144,9 @@ function getCurrentStorage()
 end
 
 function getMaxStorage()
+ if forceMaxStorage ~= nil then
+  return forceMaxStorage
+ end
  local maxStorage = 0
  local storageCapacity = 0
  for i, storage in pairs(storageRF) do
@@ -295,9 +298,9 @@ function findConnectedPeripherals(resetAll)
    table.insert(storageMana, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"hasFrequency", "getFrequencyItemCount", "getFrequencyItemCapacity"}) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
    table.insert(storageQIO, peripheral.wrap(per))
-  elseif table.findAll(peripheral.getMethods(per), {"tanks"}) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas"}, forceStorageType) ~= nil then
+  elseif table.findAll(peripheral.getMethods(per), {"tanks"}) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas", "Blood"}, forceStorageType) ~= nil then
    table.insert(storageFluid, peripheral.wrap(per))
-  elseif table.find(peripheral.getMethods(per), "getStored") and (table.find(peripheral.getMethods(per), "getCapacity") or table.find(peripheral.getMethods(per), "getTankCapacity") or table.find(peripheral.getMethods(per), "getChemicalTankCapacity")) and (table.find(peripheral.getMethods(per), "getNeeded") or table.find(peripheral.getMethods(per), "getFilledPercentage")) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas"}, forceStorageType) ~= nil then
+  elseif table.find(peripheral.getMethods(per), "getStored") and (table.find(peripheral.getMethods(per), "getCapacity") or table.find(peripheral.getMethods(per), "getTankCapacity") or table.find(peripheral.getMethods(per), "getChemicalTankCapacity")) and (table.find(peripheral.getMethods(per), "getNeeded") or table.find(peripheral.getMethods(per), "getFilledPercentage")) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas", "Blood"}, forceStorageType) ~= nil then
    table.insert(storageFluidMeka, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"size", "list", "getItemLimit", "getItemDetail"}) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
    table.insert(storageItem, peripheral.wrap(per))
@@ -323,6 +326,9 @@ function initStorageColor()
  elseif storageType == "EU" or storageType == "mB" or storageType == "Liquid" or storageType == "Fluid" or storageType == "Gas" or storageType == "Mana" then
   storageFillColor = colors.blue
   storageFillColorAlt = colors.lightBlue
+ elseif storageType == "Blood" then
+  storageFillColor = colors.red
+  storageFillColorAlt = colors.pink
  elseif storageType == "Bar" or storageType == "Air" or storageType == "Pressure" then
    storageFillColor = colors.green
    storageFillColorAlt = colors.lime
@@ -358,6 +364,7 @@ paddingSide = 0 --extra padding on the left and on the right of the storage spac
 decimalPrecision = 2 --maximum number of decimal to display on storage capacity
 useAbreviation = true --use abreviations on storage capacity
 forceStorageType = "" --if set, all other connected storage type will be ignored
+forceMaxStorage = nil --if set, the max storage will not be calculated and this value will be used instead
 updateFrequency = 1 --how often should the display be updated (in seconds)
 updateLatency = 2 --number of ticks to add per connected storage when calculating the transfer rate
 updateCapacity = false --should the total capacity be updated a the same time as the current storage
