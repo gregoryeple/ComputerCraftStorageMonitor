@@ -12,6 +12,10 @@
 
 ![Fluid monitor](https://github.com/gregoryeple/ComputerCraftStorageMonitor/blob/main/examples/fluid.png?raw=true)
 
+## Bytes (Applied Energistics 2)
+
+![Bytes monitor](https://github.com/gregoryeple/ComputerCraftStorageMonitor/blob/main/examples/bytes.png?raw=true)
+
 ## Mana (Botania)
 
 ![Mana monitor](https://github.com/gregoryeple/ComputerCraftStorageMonitor/blob/main/examples/mana.png?raw=true)
