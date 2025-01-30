@@ -3,7 +3,7 @@
 StorageMonitor program
 By Out-Feu
 
-version 1.5.0
+version 1.6.0
 
 Free to distribute/alter
 so long as proper credit to original
@@ -76,6 +76,18 @@ function getCurrentStorage()
    currentStorage = currentStorage + math.floor(storageCapacity * 0.4)
   end
  end
+ for i, storage in pairs(storageRFAE) do
+  storageCapacity = storage.getEnergyStorage()
+  if storageCapacity ~= nil then
+   currentStorage = currentStorage + (storageCapacity * 2)
+  end
+ end
+ for i, storage in pairs(storageRFRS) do
+  storageCapacity = storage.getEnergyStorage()
+  if storageCapacity ~= nil then
+   currentStorage = currentStorage + storageCapacity
+  end
+ end
  for i, storage in pairs(storageEU) do
   storageCapacity = storage.getEUStored()
   if storageCapacity ~= nil then
@@ -124,11 +136,39 @@ function getCurrentStorage()
    end
   end
  end
+ for i, storage in pairs(storageFluidAE) do
+  storageCapacity = storage.getUsedFluidStorage()
+  if storageCapacity ~= nil then
+   currentStorage = currentStorage + storageCapacity
+  end
+ end
+ for i, storage in pairs(storageFluidRS) do
+  local fluids = storage.listFluids()
+  if fluids ~= nil then
+   for n, fluid in pairs(fluids) do
+    currentStorage = currentStorage + fluid.amount
+   end
+  end
+ end
  for i, storage in pairs(storageItem) do
   local items = storage.list()
   if items ~= nil then
    for n, item in pairs(items) do
     currentStorage = currentStorage + item.count
+   end
+  end
+ end
+ for i, storage in pairs(storageItemAE) do
+  storageCapacity = storage.getUsedItemStorage()
+  if storageCapacity ~= nil then
+   currentStorage = currentStorage + storageCapacity
+  end
+ end
+ for i, storage in pairs(storageItemRS) do
+  local items = storage.listItems()
+  if items ~= nil then
+   for n, item in pairs(items) do
+    currentStorage = currentStorage + item.amount
    end
   end
  end
@@ -159,6 +199,18 @@ function getMaxStorage()
   storageCapacity = storage.getMaxEnergy()
   if storageCapacity ~= nil then
    maxStorage = maxStorage + math.floor(storageCapacity * 0.4)
+  end
+ end
+ for i, storage in pairs(storageRFAE) do
+  storageCapacity = storage.getMaxEnergyStorage()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + (storageCapacity * 2)
+  end
+ end
+ for i, storage in pairs(storageRFRS) do
+  storageCapacity = storage.getMaxEnergyStorage()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
   end
  end
  for i, storage in pairs(storageEU) do
@@ -203,6 +255,22 @@ function getMaxStorage()
    maxStorage = maxStorage + storageCapacity
   end
  end
+ for i, storage in pairs(storageFluidAE) do
+  storageCapacity = storage.getTotalFluidStorage()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
+  end
+ end
+ for i, storage in pairs(storageFluidRS) do
+  storageCapacity = storage.getMaxFluidDiskStorage()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
+  end
+  storageCapacity = storage.getMaxFluidExternalStorage()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
+  end
+ end
  for i, storage in pairs(storageItem) do
   local storageSize = storage.size()
   if storageSize ~= nil then
@@ -214,6 +282,22 @@ function getMaxStorage()
      maxStorage = maxStorage + storage.getItemLimit(n)
     end
    end
+  end
+ end
+ for i, storage in pairs(storageItemAE) do
+  storageCapacity = storage.getTotalItemStorage()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
+  end
+ end
+ for i, storage in pairs(storageItemRS) do
+  storageCapacity = storage.getMaxItemDiskStorage()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
+  end
+  storageCapacity = storage.getMaxItemExternalStorage()
+  if storageCapacity ~= nil then
+   maxStorage = maxStorage + storageCapacity
   end
  end
  for i, storage in pairs(storageQIO) do
@@ -243,7 +327,7 @@ function findStorageType()
  if forceStorageType ~= nil and forceStorageType ~= "" then
   return forceStorageType
  end
- local types = { (#storageRF + #storageRFMeka), #storageEU, #storagePressure, #storageMana, (#storageFluid + #storageFluidMeka), (#storageItem + #storageQIO) }
+ local types = { (#storageRF + #storageRFMeka + #storageRFAE + #storageRFRS), #storageEU, #storagePressure, #storageMana, (#storageFluid + #storageFluidMeka + #storageFluidRS), (#storageItem + #storageItemRS + #storageQIO), (#storageItemAE + #storageFluidAE) }
  local nType = 0
  for i, type in pairs(types) do
   if type > 0 then
@@ -251,7 +335,7 @@ function findStorageType()
   end
  end
  if nType == 1 then
-  if #storageRF > 0 or #storageRFMeka > 0 then
+  if #storageRF > 0 or #storageRFMeka > 0 or #storageRFAE > 0 or #storageRFRS > 0 then
    return "RF"
   elseif #storageEU > 0 then
    return "EU"
@@ -259,10 +343,12 @@ function findStorageType()
    return "Bar"
   elseif #storageMana > 0 then
    return "Mana"
-  elseif #storageFluid > 0 or #storageFluidMeka > 0 then
+  elseif #storageFluid > 0 or #storageFluidMeka > 0 or #storageFluidRS > 0 then
    return "mB"
-  elseif #storageItem > 0 or #storageQIO > 0 then
+  elseif #storageItem > 0 or #storageItemRS > 0 or #storageQIO > 0 then
    return "Item"
+  elseif #storageItemAE > 0 or #storageFluidAE > 0 then
+   return "Bytes"
   end
  end
  return ""
@@ -274,21 +360,27 @@ function findConnectedPeripherals(resetAll)
   monitors = {}
   storageRF = {}
   storageRFMeka = {}
+  storageRFAE = {}
+  storageRFRS = {}
   storageEU = {}
   storagePressure = {}
   storageMana = {}
   storageFluid = {}
   storageFluidMeka = {}
+  storageFluidAE = {}
+  storageFluidRS = {}
   storageItem = {}
+  storageItemAE = {}
+  storageItemRS = {}
   storageQIO = {}
  end
  local peripherals = peripheral.getNames()
  for i, per in pairs(peripherals) do
   if peripheral.getType(per) == "monitor" then
    table.insert(monitors, peripheral.wrap(per))
-  elseif table.findAll(peripheral.getMethods(per), {"getEnergy", "getEnergyCapacity"}) and table.find({nil, "", "RF", "FE"}, forceStorageType) ~= nil then
+  elseif table.findAll(peripheral.getMethods(per), {"getEnergy", "getEnergyCapacity"}) and table.find({nil, "", "RF", "FE", "AE"}, forceStorageType) ~= nil then
    table.insert(storageRF, peripheral.wrap(per))
-  elseif table.findAll(peripheral.getMethods(per), {"getEnergy", "getMaxEnergy"}) and table.find({nil, "", "RF", "FE"}, forceStorageType) ~= nil then
+  elseif table.findAll(peripheral.getMethods(per), {"getEnergy", "getMaxEnergy"}) and table.find({nil, "", "RF", "FE", "AE"}, forceStorageType) ~= nil then
    table.insert(storageRFMeka, peripheral.wrap(per))
   elseif table.findAll(peripheral.getMethods(per), {"getEUStored", "getEUCapacity"}) and table.find({nil, "", "EU"}, forceStorageType) ~= nil then
    table.insert(storageEU, peripheral.wrap(per))
@@ -302,15 +394,32 @@ function findConnectedPeripherals(resetAll)
    table.insert(storageFluid, peripheral.wrap(per))
   elseif table.find(peripheral.getMethods(per), "getStored") and (table.find(peripheral.getMethods(per), "getCapacity") or table.find(peripheral.getMethods(per), "getTankCapacity") or table.find(peripheral.getMethods(per), "getChemicalTankCapacity")) and (table.find(peripheral.getMethods(per), "getNeeded") or table.find(peripheral.getMethods(per), "getFilledPercentage")) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas", "Blood"}, forceStorageType) ~= nil then
    table.insert(storageFluidMeka, peripheral.wrap(per))
+  elseif table.findAll(peripheral.getMethods(per), {"getTotalItemStorage", "getUsedItemStorage", "getTotalFluidStorage", "getUsedFluidStorage"}) and table.find({nil, "", "Bytes"}, forceStorageType) ~= nil then
+   table.insert(storageItemAE, peripheral.wrap(per))
+   table.insert(storageFluidAE, peripheral.wrap(per))
+  elseif table.findAll(peripheral.getMethods(per), {"getTotalItemStorage", "getUsedItemStorage"}) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
+   table.insert(storageItemAE, peripheral.wrap(per))
+  elseif table.findAll(peripheral.getMethods(per), {"getTotalFluidStorage", "getUsedFluidStorage"}) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas", "Blood"}, forceStorageType) ~= nil then
+   table.insert(storageFluidAE, peripheral.wrap(per))
+  elseif table.find(peripheral.getMethods(per), "listItems") and (table.find(peripheral.getMethods(per), "getMaxItemDiskStorage") or table.find(peripheral.getMethods(per), "getMaxItemExternalStorage")) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
+   table.insert(storageItemRS, peripheral.wrap(per))
+  elseif table.find(peripheral.getMethods(per), "listFluids") and (table.find(peripheral.getMethods(per), "getMaxFluidDiskStorage") or table.find(peripheral.getMethods(per), "getMaxFluidExternalStorage")) and table.find({nil, "", "mB", "Liquid", "Fluid", "Gas", "Blood"}, forceStorageType) ~= nil then
+   table.insert(storageFluidRS, peripheral.wrap(per))
+  elseif table.findAll(peripheral.getMethods(per), {"getMaxEnergyStorage", "getEnergyStorage"}) and table.find({nil, "", "RF", "FE", "AE"}, forceStorageType) ~= nil then
+   if table.find(peripheral.getMethods(per), "getCraftingCPUs") then
+    table.insert(storageRFAE, peripheral.wrap(per))
+   else
+    table.insert(storageRFRS, peripheral.wrap(per))
+   end
   elseif table.findAll(peripheral.getMethods(per), {"size", "list", "getItemLimit", "getItemDetail"}) and table.find({nil, "", "Item"}, forceStorageType) ~= nil then
    table.insert(storageItem, peripheral.wrap(per))
   elseif peripheral.getType(per) ~= "modem" then
    printError("Found unsupported peripheral: " .. peripheral.getType(per))
   end
  end
- nStorage = #storageRF + #storageRFMeka + #storageEU + #storagePressure + #storageMana + #storageFluid + #storageFluidMeka + #storageItem + #storageQIO
+ nStorage = #storageRF + #storageRFMeka + #storageRFAE + #storageRFRS + #storageEU + #storagePressure + #storageMana + #storageFluid + #storageFluidAE + #storageFluidRS + #storageFluidMeka + #storageItem + #storageItemAE + #storageItemRS + #storageQIO
  print("Found " .. #monitors .. " monitors and " .. nStorage .. " storage peripherals")
-end 
+end
 
 function initStorageColor()
  if storageFillColor ~= nil then
@@ -332,10 +441,16 @@ function initStorageColor()
  elseif storageType == "Bar" or storageType == "Air" or storageType == "Pressure" then
    storageFillColor = colors.green
    storageFillColorAlt = colors.lime
+ elseif storageType == "Bytes" then
+  storageFillColor = colors.cyan
+  storageFillColorAlt = colors.lightBlue
  elseif storageType == "Item" then
   if #storageQIO > 0 and #storageItem == 0 then
    storageFillColor = colors.green
    storageFillColorAlt = colors.lime
+  elseif #storageItemRS > 0 and #storageItem == 0 then
+   storageFillColor = colors.cyan
+   storageFillColorAlt = colors.lightBlue
   else
    storageFillColor = colors.brown
    storageFillColorAlt = colors.orange
@@ -372,13 +487,19 @@ updateCapacity = false --should the total capacity be updated a the same time as
 abreviationList = { "K", "M", "B", "T" } --each subsequent symbol must be equal to it's predecessor x1000
 storageRF = {}
 storageRFMeka = {}
+storageRFAE = {}
+storageRFRS = {}
 storageMana = {}
 storageEU = {}
 storagePressure = {}
 storageItem = {}
+storageItemAE = {}
+storageItemRS = {}
 storageQIO = {}
 storageFluid = {}
 storageFluidMeka = {}
+storageFluidAE = {}
+storageFluidRS = {}
 monitors = {}
 storageType = ""
 
